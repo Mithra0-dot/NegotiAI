@@ -1,0 +1,16 @@
+# Frontend
+node_modules/
+dist/
+*.local
+
+# Backend (future) — never commit secrets
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
