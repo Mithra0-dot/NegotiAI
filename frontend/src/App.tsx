@@ -1,21 +1,13 @@
-import { useState } from "react";
-import { ScenarioPicker } from "./components/ScenarioPicker";
-import type { Scenario } from "./types/scenario";
+import { Route, Routes } from "react-router-dom";
+import { ChatPage } from "./pages/ChatPage";
+import { ScenarioPickerPage } from "./pages/ScenarioPickerPage";
 
 function App() {
-  // Session creation / chat screen is a later feature — for now, selecting
-  // a scenario just stores it so we can see the picker responding.
-  const [selected, setSelected] = useState<Scenario | null>(null);
-
   return (
-    <>
-      <ScenarioPicker onSelect={setSelected} />
-      {selected && (
-        <p className="pb-16 text-center text-sm text-slate-500">
-          Selected: {selected.name} (session start not built yet)
-        </p>
-      )}
-    </>
+    <Routes>
+      <Route path="/" element={<ScenarioPickerPage />} />
+      <Route path="/chat/:scenarioId" element={<ChatPage />} />
+    </Routes>
   );
 }
 
