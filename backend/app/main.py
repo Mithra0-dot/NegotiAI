@@ -52,4 +52,4 @@ def chat(request: ChatRequest) -> ChatResponse:
         f"[stub] ({persona.role_description}) Got your message: "
         f"{request.message!r}. Real agent logic comes in a later pass."
     )
-    return ChatResponse(reply=reply, persona=persona)
+    return ChatResponse(reply=reply, persona=persona.to_public())

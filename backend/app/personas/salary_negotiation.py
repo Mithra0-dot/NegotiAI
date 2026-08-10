@@ -1,9 +1,9 @@
-from app.personas.models import Constraints, PersonaConfig
+from app.personas.models import Constraints, PersonaInternal
 
 # The hiring manager is the one paying, so their walk_away is a ceiling:
 # the max base they'll approve before losing the candidate is preferable
 # to blowing the budget.
-PERSONA = PersonaConfig(
+PERSONA = PersonaInternal(
     scenario_id="salary-negotiation",
     role_description=(
         "Hiring manager at a mid-size fintech company, extending a base "

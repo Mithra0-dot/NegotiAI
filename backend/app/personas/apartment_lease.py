@@ -1,10 +1,10 @@
-from app.personas.models import Constraints, PersonaConfig
+from app.personas.models import Constraints, PersonaInternal
 
 # The landlord is the one being paid, so their walk_away is a floor: the
 # lowest rent they'll accept before preferring to let the unit sit vacant
 # and find another tenant. Note walk_away < target here, unlike the
 # buyer-side scenarios in this package.
-PERSONA = PersonaConfig(
+PERSONA = PersonaInternal(
     scenario_id="apartment-lease",
     role_description=(
         "Property manager for a mid-size apartment complex, negotiating "

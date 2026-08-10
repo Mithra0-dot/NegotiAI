@@ -7,7 +7,7 @@ like detected tactics and phase.
 
 from pydantic import BaseModel
 
-from app.personas.models import PersonaConfig
+from app.personas.models import PersonaPublic
 
 
 class ChatRequest(BaseModel):
@@ -17,9 +17,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
-    # TODO: this currently exposes the full persona, including
-    # constraints (target/walk_away) — fine for this verification-only
-    # pass, but it leaks the opponent's BATNA to the client. Before real
-    # dialogue logic ships, split this into a public-safe view (role,
-    # personality, opening tactic) and keep constraints internal-only.
-    persona: PersonaConfig
+    # Public-safe subset only (role, personality, opening tactic) — never
+    # PersonaInternal, which carries goals/constraints (target/walk_away)
+    # and would leak the opponent's BATNA to the client.
+    persona: PersonaPublic

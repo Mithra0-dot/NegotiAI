@@ -1,8 +1,8 @@
-from app.personas.models import Constraints, PersonaConfig
+from app.personas.models import Constraints, PersonaInternal
 
 # The client is the one paying, so their walk_away is a ceiling: the max
 # hourly rate they'll accept before looking for a cheaper freelancer.
-PERSONA = PersonaConfig(
+PERSONA = PersonaInternal(
     scenario_id="freelance-rate",
     role_description=(
         "Long-time freelance client (small business owner) negotiating "

@@ -1,9 +1,9 @@
-from app.personas.models import Constraints, PersonaConfig
+from app.personas.models import Constraints, PersonaInternal
 
 # The cofounder is negotiating their own slice, so their walk_away is a
 # floor: the minimum equity % they'll accept before declining to join at
 # all.
-PERSONA = PersonaConfig(
+PERSONA = PersonaInternal(
     scenario_id="cofounder-equity-split",
     role_description=(
         "Prospective cofounder negotiating the equity split for a new "
