@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { scenarios } from "../data/scenarios";
 import { sendChatMessage } from "../lib/api";
+import { SignalTag } from "../components/SignalTag";
 import type { ChatMessage } from "../types/chat";
 
 export function ChatPage() {
@@ -18,14 +19,34 @@ export function ChatPage() {
     const text = input.trim();
     if (!text || !scenarioId || isSending) return;
 
+    const turnNumber = messages.filter((m) => m.role === "user").length + 1;
+    // Index of the user message we're about to append — safe to compute
+    // from the current `messages` length since sends are sequential (the
+    // input is disabled while isSending, so there's never a second
+    // in-flight message to confuse this with). Used below to attach
+    // detected_signals to this exact message once the response arrives.
+    const userMessageIndex = messages.length;
+
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
     setIsSending(true);
     setError(null);
 
     try {
-      const { reply } = await sendChatMessage(scenarioId, text);
-      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+      const { reply, phase, tactic, detected_signals } = await sendChatMessage(
+        scenarioId,
+        text,
+        turnNumber,
+      );
+      setMessages((prev) => {
+        const next = [...prev];
+        next[userMessageIndex] = {
+          ...next[userMessageIndex],
+          detectedSignals: detected_signals,
+        };
+        next.push({ role: "assistant", text: reply, phase, tactic });
+        return next;
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -59,15 +80,34 @@ export function ChatPage() {
           </p>
         )}
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-              msg.role === "user"
-                ? "ml-auto bg-violet-600/80 text-white"
-                : "bg-slate-800 text-slate-200"
-            }`}
-          >
-            {msg.text}
+          <div key={i} className={`max-w-[80%] ${msg.role === "user" ? "ml-auto" : ""}`}>
+            <div
+              className={`rounded-lg px-3 py-2 text-sm ${
+                msg.role === "user"
+                  ? "bg-violet-600/80 text-white"
+                  : "bg-slate-800 text-slate-200"
+              }`}
+            >
+              {msg.text}
+            </div>
+            {msg.role === "user" && !!msg.detectedSignals?.length && (
+              // Live in-session tactic tagging (CLAUDE.md MVP feature #5):
+              // concession-signal classifier results for this exact
+              // message, attached the moment the /chat response resolves.
+              <div className="mt-1 flex flex-wrap justify-end gap-1 px-1">
+                {msg.detectedSignals.map((s) => (
+                  <SignalTag key={s.signal_type} signalType={s.signal_type} />
+                ))}
+              </div>
+            )}
+            {msg.role === "assistant" && msg.phase && msg.tactic && (
+              // Temporary dev caption proving the strategy state machine
+              // ran — not the real "Live in-session tactic tagging" MVP
+              // feature (which tags the user's messages, not the agent's).
+              <p className="mt-1 px-1 text-xs text-slate-600">
+                phase: {msg.phase} · tactic: {msg.tactic}
+              </p>
+            )}
           </div>
         ))}
         {isSending && (

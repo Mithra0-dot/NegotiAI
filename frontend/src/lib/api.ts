@@ -8,8 +8,13 @@ const API_BASE_URL =
 export async function sendChatMessage(
   scenarioId: string,
   message: string,
+  turnNumber: number,
 ): Promise<ChatResponse> {
-  const body: ChatRequest = { scenario_id: scenarioId, message };
+  const body: ChatRequest = {
+    scenario_id: scenarioId,
+    message,
+    turn_number: turnNumber,
+  };
 
   const res = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
