@@ -1,4 +1,5 @@
 from app.personas.models import Constraints, PersonaInternal
+from app.strategies.models import Tactic
 
 # The client is the one paying, so their walk_away is a ceiling: the max
 # hourly rate they'll accept before looking for a cheaper freelancer.
@@ -19,4 +20,7 @@ PERSONA = PersonaInternal(
     ),
     personality_traits=["warm", "conflict-avoidant", "leans on loyalty and rapport"],
     opening_tactic="Leads with appreciation and relationship history before asking for a discount",
+    # Closest fit among the 4 tactics for a warm, relationship-leaning
+    # opener that isn't anchoring/silence/deadline-driven.
+    opening_tactic_tag=Tactic.GOOD_COP_BAD_COP,
 )

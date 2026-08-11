@@ -1,4 +1,5 @@
 from app.personas.models import Constraints, PersonaInternal
+from app.strategies.models import Tactic
 
 # The cofounder is negotiating their own slice, so their walk_away is a
 # floor: the minimum equity % they'll accept before declining to join at
@@ -20,4 +21,5 @@ PERSONA = PersonaInternal(
     ),
     personality_traits=["data-driven", "cites market comps and precedent", "treats it as a negotiation, not a relationship"],
     opening_tactic="Opens with a market-comps-backed anchor before any relationship framing",
+    opening_tactic_tag=Tactic.ANCHORING,
 )

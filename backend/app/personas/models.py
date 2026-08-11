@@ -9,6 +9,8 @@ scenario per file.
 
 from pydantic import BaseModel
 
+from app.strategies.models import Tactic
+
 
 class Constraints(BaseModel):
     """Numeric negotiation boundaries for a persona.
@@ -40,6 +42,12 @@ class PersonaPublic(BaseModel):
     role_description: str
     personality_traits: list[str]
     opening_tactic: str
+    # Structured (enum) counterpart to the free-text `opening_tactic` above,
+    # used by the strategy layer for deterministic tactic selection instead
+    # of matching against prose. Safe to expose publicly — the frontend's
+    # scenario cards already show opponent style hints, so this isn't a new
+    # leak (unlike `goals`/`constraints` on PersonaInternal).
+    opening_tactic_tag: Tactic
 
 
 class PersonaInternal(BaseModel):
@@ -59,6 +67,7 @@ class PersonaInternal(BaseModel):
     constraints: Constraints
     personality_traits: list[str]
     opening_tactic: str
+    opening_tactic_tag: Tactic
 
     def to_public(self) -> PersonaPublic:
         return PersonaPublic(
@@ -66,4 +75,5 @@ class PersonaInternal(BaseModel):
             role_description=self.role_description,
             personality_traits=self.personality_traits,
             opening_tactic=self.opening_tactic,
+            opening_tactic_tag=self.opening_tactic_tag,
         )

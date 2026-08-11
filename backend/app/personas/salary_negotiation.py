@@ -1,4 +1,5 @@
 from app.personas.models import Constraints, PersonaInternal
+from app.strategies.models import Tactic
 
 # The hiring manager is the one paying, so their walk_away is a ceiling:
 # the max base they'll approve before losing the candidate is preferable
@@ -20,4 +21,5 @@ PERSONA = PersonaInternal(
     ),
     personality_traits=["deadline-driven", "friendly but firm", "risk-averse on budget"],
     opening_tactic="Anchors low citing the approved band, creates urgency around a close date",
+    opening_tactic_tag=Tactic.ANCHORING,
 )
