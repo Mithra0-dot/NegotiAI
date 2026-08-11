@@ -1,16 +1,14 @@
-"""FastAPI skeleton.
+"""FastAPI app.
 
-This is intentionally minimal: one health check and one stub /chat
-endpoint that now runs persona lookup, the strategy state machine
-(phase/tactic selection), and the rule-based concession-signal classifier
-— but still doesn't call an LLM, the reply is a labeled stub. Real
-dialogue generation and LangChain orchestration are later passes (see
-CLAUDE.md's MVP build order).
+/chat now runs the full pipeline: persona lookup, the rule-based
+concession-signal classifier, the (now signal-adaptive) strategy state
+machine, and a real LLM call (LangChain + Anthropic) for the reply.
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agent import AgentError, generate_reply
 from app.classifier import classify_message
 from app.personas import get_persona
 from app.schemas import ChatRequest, ChatResponse
@@ -46,20 +44,27 @@ def chat(request: ChatRequest) -> ChatResponse:
         )
 
     phase = phase_for_turn(request.turn_number)
-    tactic = select_tactic(persona, phase)
+    # Classification has to run before tactic selection now — select_tactic
+    # reacts to detected_signals (escalates on unforced concession /
+    # premature agreement, eases off if the user is holding firm).
     detected_signals = classify_message(request.message)
+    tactic = select_tactic(persona, phase, detected_signals)
 
-    # Stub reply, deliberately labeled as such so it's never mistaken for
-    # real negotiation-agent output. Embedding the persona's role plus the
-    # selected phase/tactic here makes the state machine's output visible
-    # without inspecting raw JSON. detected_signals is intentionally NOT
-    # reflected in the reply/tactic yet — wiring it into adaptive
-    # difficulty is a later pass; for now it's observable-only, verified
-    # via the response payload. Real dialogue generation also comes later.
-    reply = (
-        f"[stub] ({persona.role_description}) [{phase.value} / {tactic.value}] "
-        f"Got your message: {request.message!r}. Real agent logic comes in a later pass."
-    )
+    try:
+        reply = generate_reply(
+            persona=persona,
+            phase=phase,
+            tactic=tactic,
+            detected_signals=detected_signals,
+            message=request.message,
+            history=request.history,
+        )
+    except AgentError as exc:
+        # Surface as a clear failure, never a silent fallback to stub
+        # text — a broken agent call should look broken, not like a
+        # bland-but-real reply.
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
     return ChatResponse(
         reply=reply,
         persona=persona.to_public(),

@@ -1,15 +1,26 @@
 """Request/response models for the API.
 
-Kept intentionally thin for this pass — just enough to describe the /chat
-stub. Once the real negotiation agent lands, ChatResponse will grow further
-(scoring, etc).
+Kept intentionally thin — just enough to describe /chat. ChatResponse will
+grow further (scoring, etc) as later passes land.
 """
+
+from typing import Literal
 
 from pydantic import BaseModel
 
 from app.classifier.models import DetectedSignal
 from app.personas.models import PersonaPublic
 from app.strategies.models import Phase, Tactic
+
+
+class ChatTurn(BaseModel):
+    """One prior turn in the conversation, as the frontend already holds
+    it. Sent as `history` on every /chat call so the LLM has continuity
+    — there's no backend session store, so the frontend owns the
+    transcript and resends it each time (no DB in this pass)."""
+
+    role: Literal["user", "assistant"]
+    text: str
 
 
 class ChatRequest(BaseModel):
@@ -21,6 +32,10 @@ class ChatRequest(BaseModel):
     # this instead of tracking it server-side. Not server-verified; fine
     # for a stub pass, revisit once real sessions/DB land.
     turn_number: int
+    # Prior turns, oldest first, NOT including `message` above. Passed to
+    # the LLM as conversation history so it doesn't contradict its own
+    # earlier statements (its anchor number, prior concessions, etc).
+    history: list[ChatTurn] = []
 
 
 class ChatResponse(BaseModel):
@@ -34,6 +49,7 @@ class ChatResponse(BaseModel):
     phase: Phase
     tactic: Tactic
     # Concession signals detected in the user's message (rule-based, see
-    # app/classifier/). Observable only for now — not yet wired into
-    # tactic selection or the (still-stub) reply text.
+    # app/classifier/). Now feeds tactic selection (see
+    # strategies/default.py's select_tactic) as well as being returned
+    # here for the live tactic-tagging UI.
     detected_signals: list[DetectedSignal]
