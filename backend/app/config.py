@@ -18,6 +18,11 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
+    # Dev/demo toggle: skip the real Anthropic call and return a canned,
+    # tactic-appropriate reply instead — see app/agent/mock.py. Lets the
+    # full flow (including visible tone shifts as tactic escalates) be
+    # tested without API credits.
+    mock_llm: bool = False
 
 
 settings = Settings()

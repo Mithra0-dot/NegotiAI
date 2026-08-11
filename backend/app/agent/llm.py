@@ -10,6 +10,7 @@ from functools import lru_cache
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
+from app.agent.mock import generate_mock_reply
 from app.agent.prompts import build_system_prompt
 from app.classifier.models import DetectedSignal
 from app.config import settings
@@ -70,6 +71,11 @@ def generate_reply(
     returns the reply text. Raises AgentError on any failure — callers
     turn that into an HTTP error rather than falling back to stub text,
     so a real failure is never mistaken for a real (if bland) reply."""
+    if settings.mock_llm:
+        # Dev/demo mode — no API call, no credits spent. See
+        # app/agent/mock.py; real path below is otherwise untouched.
+        return generate_mock_reply(persona, tactic)
+
     system_prompt = build_system_prompt(persona, phase, tactic, detected_signals)
     conversation = [
         SystemMessage(content=system_prompt),
