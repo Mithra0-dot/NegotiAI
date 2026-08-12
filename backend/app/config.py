@@ -24,5 +24,12 @@ class Settings(BaseSettings):
     # tested without API credits.
     mock_llm: bool = False
 
+    # Defaults to the local docker-compose Postgres (see repo-root
+    # docker-compose.yml) so a fresh clone works with zero config beyond
+    # `docker compose up -d`. Override via .env for anything else (e.g.
+    # Render's Postgres URL in production). Must be Postgres, not SQLite
+    # — see app/db.py's docstring.
+    database_url: str = "postgresql+psycopg://negotiai:negotiai@localhost:5432/negotiai"
+
 
 settings = Settings()
