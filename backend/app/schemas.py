@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.classifier.models import DetectedSignal
 from app.personas.models import PersonaPublic
+from app.scoring.models import SessionScore
 from app.strategies.models import Phase, Tactic
 
 
@@ -53,3 +54,7 @@ class ChatResponse(BaseModel):
     # strategies/default.py's select_tactic) as well as being returned
     # here for the live tactic-tagging UI.
     detected_signals: list[DetectedSignal]
+    # Populated only on the turn that ends the session (deal reached,
+    # walk-away, or turn limit) — see app/scoring/. None while the
+    # negotiation is still ongoing.
+    session_score: SessionScore | None = None

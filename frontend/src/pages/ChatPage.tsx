@@ -3,7 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { scenarios } from "../data/scenarios";
 import { sendChatMessage } from "../lib/api";
 import { SignalTag } from "../components/SignalTag";
-import type { ChatMessage } from "../types/chat";
+import { Scorecard } from "../components/Scorecard";
+import type { ChatMessage, ChatTurn, SessionScore } from "../types/chat";
 
 export function ChatPage() {
   const { scenarioId } = useParams<{ scenarioId: string }>();
@@ -13,11 +14,12 @@ export function ChatPage() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionScore, setSessionScore] = useState<SessionScore | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || !scenarioId || isSending) return;
+    if (!text || !scenarioId || isSending || sessionScore) return;
 
     const turnNumber = messages.filter((m) => m.role === "user").length + 1;
     // Index of the user message we're about to append — safe to compute
@@ -26,6 +28,13 @@ export function ChatPage() {
     // in-flight message to confuse this with). Used below to attach
     // detected_signals to this exact message once the response arrives.
     const userMessageIndex = messages.length;
+    // Prior turns as the LLM needs them — same pre-send snapshot as
+    // turnNumber/userMessageIndex above, so it's exactly "everything sent
+    // before this message" with nothing missing or duplicated.
+    const history: ChatTurn[] = messages.map((m) => ({
+      role: m.role,
+      text: m.text,
+    }));
 
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
@@ -33,11 +42,8 @@ export function ChatPage() {
     setError(null);
 
     try {
-      const { reply, phase, tactic, detected_signals } = await sendChatMessage(
-        scenarioId,
-        text,
-        turnNumber,
-      );
+      const { reply, phase, tactic, detected_signals, session_score } =
+        await sendChatMessage(scenarioId, text, turnNumber, history);
       setMessages((prev) => {
         const next = [...prev];
         next[userMessageIndex] = {
@@ -47,6 +53,9 @@ export function ChatPage() {
         next.push({ role: "assistant", text: reply, phase, tactic });
         return next;
       });
+      if (session_score) {
+        setSessionScore(session_score);
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -72,11 +81,12 @@ export function ChatPage() {
         )}
       </header>
 
+      {sessionScore && <Scorecard score={sessionScore} />}
+
       <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/40 p-4">
         {messages.length === 0 && (
           <p className="text-sm text-slate-500">
-            Say something to start the negotiation. (Stub backend — replies
-            aren't real yet.)
+            Say something to start the negotiation.
           </p>
         )}
         {messages.map((msg, i) => (
@@ -128,13 +138,13 @@ export function ChatPage() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message…"
-          disabled={isSending}
-          className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          placeholder={sessionScore ? "Session ended" : "Type your message…"}
+          disabled={isSending || !!sessionScore}
+          className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={isSending || !input.trim()}
+          disabled={isSending || !!sessionScore || !input.trim()}
           className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
         >
           Send

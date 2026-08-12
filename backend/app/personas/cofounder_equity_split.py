@@ -19,6 +19,14 @@ PERSONA = PersonaInternal(
         walk_away=50,
         unit="% equity",
     ),
+    # The user's own equity share (not the persona's) — target is their
+    # ideal, walk_away the minimum they'd accept before declining to
+    # cofound at all. Higher is better, same direction as the persona's.
+    user_constraints=Constraints(
+        target=55,
+        walk_away=40,
+        unit="% equity",
+    ),
     personality_traits=["data-driven", "cites market comps and precedent", "treats it as a negotiation, not a relationship"],
     opening_tactic="Opens with a market-comps-backed anchor before any relationship framing",
     opening_tactic_tag=Tactic.ANCHORING,

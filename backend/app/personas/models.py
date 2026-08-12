@@ -65,6 +65,13 @@ class PersonaInternal(BaseModel):
     role_description: str
     goals: list[str]
     constraints: Constraints
+    # The human player's own target/walk-away for this scenario — the
+    # opposite side of the same negotiation as `constraints` above. Used
+    # by app/scoring/ for BATNA discipline. Unlike `constraints`, there's
+    # no leak concern in exposing this later (it's the user's own info,
+    # not the opponent's secret) — it's just not read by any UI yet, so
+    # it stays off PersonaPublic for now.
+    user_constraints: Constraints
     personality_traits: list[str]
     opening_tactic: str
     opening_tactic_tag: Tactic

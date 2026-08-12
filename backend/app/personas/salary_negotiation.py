@@ -19,6 +19,13 @@ PERSONA = PersonaInternal(
         walk_away=122_000,
         unit="USD/year base salary",
     ),
+    # The candidate wants a higher base — target is their ideal, walk_away
+    # the minimum they'd accept before declining the offer.
+    user_constraints=Constraints(
+        target=130_000,
+        walk_away=115_000,
+        unit="USD/year base salary",
+    ),
     personality_traits=["deadline-driven", "friendly but firm", "risk-averse on budget"],
     opening_tactic="Anchors low citing the approved band, creates urgency around a close date",
     opening_tactic_tag=Tactic.ANCHORING,

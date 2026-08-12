@@ -18,6 +18,13 @@ PERSONA = PersonaInternal(
         walk_away=85,
         unit="USD/hour",
     ),
+    # The freelancer wants a higher rate — target is their ideal, walk_away
+    # the minimum they'd accept before declining repeat work.
+    user_constraints=Constraints(
+        target=95,
+        walk_away=75,
+        unit="USD/hour",
+    ),
     personality_traits=["warm", "conflict-avoidant", "leans on loyalty and rapport"],
     opening_tactic="Leads with appreciation and relationship history before asking for a discount",
     # Closest fit among the 4 tactics for a warm, relationship-leaning

@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse } from "../types/chat";
+import type { ChatRequest, ChatResponse, ChatTurn } from "../types/chat";
 
 // Defaults to local dev backend; set VITE_API_BASE_URL to point at a
 // deployed (Render) backend later without touching this code.
@@ -9,11 +9,13 @@ export async function sendChatMessage(
   scenarioId: string,
   message: string,
   turnNumber: number,
+  history: ChatTurn[],
 ): Promise<ChatResponse> {
   const body: ChatRequest = {
     scenario_id: scenarioId,
     message,
     turn_number: turnNumber,
+    history,
   };
 
   const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -23,7 +25,16 @@ export async function sendChatMessage(
   });
 
   if (!res.ok) {
-    throw new Error(`Chat request failed: ${res.status} ${res.statusText}`);
+    // FastAPI's HTTPException(detail=...) — e.g. a 502 from a broken
+    // agent call — is worth surfacing verbatim rather than a generic
+    // status text (helps a lot when debugging a missing API key).
+    const detail = await res
+      .json()
+      .then((data) => data?.detail as string | undefined)
+      .catch(() => undefined);
+    throw new Error(
+      detail ?? `Chat request failed: ${res.status} ${res.statusText}`,
+    );
   }
 
   return res.json();

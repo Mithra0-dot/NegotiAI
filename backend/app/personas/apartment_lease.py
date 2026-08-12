@@ -20,6 +20,14 @@ PERSONA = PersonaInternal(
         walk_away=2_150,
         unit="USD/month rent",
     ),
+    # The tenant wants lower rent — target is their ideal (low), walk_away
+    # the maximum they'd accept before looking elsewhere. Note target <
+    # walk_away here, same inversion as the landlord's own constraints.
+    user_constraints=Constraints(
+        target=2_000,
+        walk_away=2_200,
+        unit="USD/month rent",
+    ),
     personality_traits=["rigid on price", "flexible on non-price terms", "process-oriented"],
     opening_tactic="Anchors on the advertised rate, offers concessions on repairs/move-in date instead of price",
     opening_tactic_tag=Tactic.ANCHORING,
