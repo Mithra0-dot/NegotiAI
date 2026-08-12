@@ -23,8 +23,9 @@ from app.schemas import ChatTurn
 from app.scoring.models import SessionScore
 from app.scoring.outcome_detection import check_session_end
 from app.scoring.scorer import compute_session_score
-from app.strategies.default import phase_for_turn, select_tactic
-from app.strategies.models import Phase, Tactic
+from app.strategies.default import phase_for_turn
+from app.strategies.models import Phase, StrategyVariant, Tactic
+from app.strategies.registry import SELECT_TACTIC_BY_VARIANT
 
 
 @dataclass
@@ -44,16 +45,23 @@ def run_chat_turn(
     message: str,
     turn_number: int,
     history: list[ChatTurn],
+    variant: StrategyVariant = StrategyVariant.DEFAULT,
 ) -> ChatTurnResult:
     """Runs one negotiation turn. Raises AgentError (from app.agent) if
     the LLM call fails — callers turn that into whatever's appropriate
     for their context (main.py: HTTP 502; eval/: let the batch fail
-    loudly rather than silently record a bad session)."""
+    loudly rather than silently record a bad session).
+
+    `variant` selects which tactic-selection policy to run (see
+    app/strategies/registry.py) — defaults to StrategyVariant.DEFAULT, so
+    main.py's /chat route (which never passes this) is unaffected; only
+    eval/'s simulated sessions pass a non-default variant."""
     phase = phase_for_turn(turn_number)
     # Classification has to run before tactic selection — select_tactic
     # reacts to detected_signals (escalates on unforced concession /
     # premature agreement, eases off if the user is holding firm).
     detected_signals = classify_message(message)
+    select_tactic = SELECT_TACTIC_BY_VARIANT[variant]
     tactic = select_tactic(persona, phase, detected_signals)
 
     reply = generate_reply(

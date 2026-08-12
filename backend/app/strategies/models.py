@@ -28,3 +28,16 @@ class Tactic(str, Enum):
     SILENCE = "silence"
     DEADLINE_PRESSURE = "deadline_pressure"
     GOOD_COP_BAD_COP = "good_cop_bad_cop"
+
+
+class StrategyVariant(str, Enum):
+    """Which tactic-selection policy is in play — the axis the simulated
+    A/B testing infra (eval/) compares. Not to be confused with
+    eval.user_types.UserType, which describes the *simulated user's*
+    behavior, not the agent's strategy; kept named distinctly (HARDLINE,
+    not e.g. AGGRESSIVE) to avoid the two being confused with each other
+    in CLI args/logs. See app/strategies/registry.py for the mapping from
+    each variant to its select_tactic() implementation."""
+
+    DEFAULT = "default"
+    HARDLINE = "hardline"

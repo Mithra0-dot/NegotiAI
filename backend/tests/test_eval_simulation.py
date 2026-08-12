@@ -23,6 +23,7 @@ from app.schemas import ChatTurn
 from app.scoring.models import SessionOutcome
 from app.scoring.outcome_detection import TURN_LIMIT
 from app.scoring.scorer import compute_session_score
+from app.strategies.models import StrategyVariant
 from eval import models  # noqa: F401 - registers SimulatedSessionRecord on Base
 from eval.repository import list_simulated_sessions, save_simulated_session
 from eval.run_simulation import run_n_sessions, run_simulated_session, summarize
@@ -114,18 +115,31 @@ def test_run_simulated_session_never_calls_the_real_llm_in_mock_mode(monkeypatch
     assert transcript
 
 
+def test_run_simulated_session_accepts_a_variant():
+    # Not asserting a specific outcome (mock mode's closing lines are
+    # randomized) — just that passing HARDLINE runs to completion the
+    # same as DEFAULT does. The strategy-level behavior difference is
+    # covered by test_strategy_hardline.py / test_chat_pipeline.py.
+    score, transcript = run_simulated_session(
+        SCENARIO_ID, UserType.DATA_DRIVEN, StrategyVariant.HARDLINE
+    )
+    assert score.outcome is not None
+    assert transcript
+
+
 # --- repository --------------------------------------------------------
 
 
 def test_save_simulated_session_persists_and_returns_a_record(db_session):
     score, transcript = _sample_score_and_transcript()
     record = save_simulated_session(
-        db_session, SCENARIO_ID, UserType.AGGRESSIVE, score, transcript
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.HARDLINE, score, transcript
     )
 
     assert record.id is not None
     assert record.scenario_id == SCENARIO_ID
     assert record.user_type == "aggressive"
+    assert record.variant == "hardline"
     assert record.outcome == "deal_reached"
     assert record.overall_score == score.overall_score
     assert record.transcript[0]["role"] == "assistant"
@@ -134,8 +148,12 @@ def test_save_simulated_session_persists_and_returns_a_record(db_session):
 
 def test_list_simulated_sessions_filters_by_user_type(db_session):
     score, transcript = _sample_score_and_transcript()
-    save_simulated_session(db_session, SCENARIO_ID, UserType.AGGRESSIVE, score, transcript)
-    save_simulated_session(db_session, SCENARIO_ID, UserType.PASSIVE, score, transcript)
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.PASSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
 
     records = list_simulated_sessions(db_session, user_type=UserType.PASSIVE)
     assert len(records) == 1
@@ -144,12 +162,30 @@ def test_list_simulated_sessions_filters_by_user_type(db_session):
 
 def test_list_simulated_sessions_filters_by_scenario_id(db_session):
     score, transcript = _sample_score_and_transcript()
-    save_simulated_session(db_session, SCENARIO_ID, UserType.AGGRESSIVE, score, transcript)
-    save_simulated_session(db_session, "freelance-rate", UserType.AGGRESSIVE, score, transcript)
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
+    save_simulated_session(
+        db_session, "freelance-rate", UserType.AGGRESSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
 
     records = list_simulated_sessions(db_session, scenario_id="freelance-rate")
     assert len(records) == 1
     assert records[0].scenario_id == "freelance-rate"
+
+
+def test_list_simulated_sessions_filters_by_variant(db_session):
+    score, transcript = _sample_score_and_transcript()
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.HARDLINE, score, transcript
+    )
+
+    records = list_simulated_sessions(db_session, variant=StrategyVariant.HARDLINE)
+    assert len(records) == 1
+    assert records[0].variant == "hardline"
 
 
 def test_simulated_sessions_stay_out_of_the_human_sessions_table(db_session):
@@ -160,7 +196,9 @@ def test_simulated_sessions_stay_out_of_the_human_sessions_table(db_session):
     from app.history.models import SessionRecord
 
     score, transcript = _sample_score_and_transcript()
-    save_simulated_session(db_session, SCENARIO_ID, UserType.AGGRESSIVE, score, transcript)
+    save_simulated_session(
+        db_session, SCENARIO_ID, UserType.AGGRESSIVE, StrategyVariant.DEFAULT, score, transcript
+    )
 
     assert db_session.query(SessionRecord).count() == 0
 
@@ -175,6 +213,18 @@ def test_run_n_sessions_persists_n_records(sqlite_session_local):
         assert record.id is not None
         assert record.scenario_id == SCENARIO_ID
         assert record.user_type == "passive"
+        # Not passed explicitly above — confirms it defaults the same way
+        # run_chat_turn()'s own `variant` parameter does.
+        assert record.variant == "default"
+
+
+def test_run_n_sessions_persists_the_requested_variant(sqlite_session_local):
+    records = run_n_sessions(
+        SCENARIO_ID, UserType.PASSIVE, 2, StrategyVariant.HARDLINE
+    )
+    assert len(records) == 2
+    for record in records:
+        assert record.variant == "hardline"
 
 
 def test_run_n_sessions_rejects_non_positive_n(sqlite_session_local):

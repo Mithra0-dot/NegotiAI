@@ -22,6 +22,7 @@ from app.personas import get_persona
 from app.schemas import ChatTurn
 from app.scoring.models import SessionScore
 from app.scoring.outcome_detection import TURN_LIMIT
+from app.strategies.models import StrategyVariant
 from eval.models import SimulatedSessionRecord
 from eval.repository import save_simulated_session
 from eval.simulated_user import generate_user_message
@@ -31,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 def run_simulated_session(
-    scenario_id: str, user_type: UserType
+    scenario_id: str,
+    user_type: UserType,
+    variant: StrategyVariant = StrategyVariant.DEFAULT,
 ) -> tuple[SessionScore, list[ChatTurn]]:
     """Runs one full simulated session turn-by-turn until it ends (deal,
     walk-away, or turn limit — same TURN_LIMIT constant check_session_end
@@ -41,7 +44,13 @@ def run_simulated_session(
     unknown scenario, or AgentError (propagated from either the
     simulated-user call or the agent's own reply) if an LLM call fails
     mid-session — the caller lets a failed session fail the whole batch
-    loudly rather than silently recording a partial one."""
+    loudly rather than silently recording a partial one.
+
+    `variant` selects which agent tactic-selection policy this simulated
+    user negotiates against (see app/strategies/registry.py) — this is
+    the axis the simulated A/B test compares, independent of `user_type`
+    (the simulated user's own behavior, unaffected by which variant it's
+    up against)."""
     persona = get_persona(scenario_id)
     if persona is None:
         raise ValueError(f"Unknown scenario_id: {scenario_id!r}")
@@ -51,7 +60,7 @@ def run_simulated_session(
     while True:
         turn_number += 1
         user_message = generate_user_message(persona, user_type, turn_number, history)
-        result = run_chat_turn(persona, user_message, turn_number, history)
+        result = run_chat_turn(persona, user_message, turn_number, history, variant=variant)
         history = [
             *history,
             ChatTurn(role="user", text=user_message),
@@ -67,19 +76,22 @@ def run_simulated_session(
         if turn_number > TURN_LIMIT:
             raise RuntimeError(
                 f"Simulated session for scenario_id={scenario_id!r} "
-                f"user_type={user_type.value!r} exceeded TURN_LIMIT "
-                "without a session_score."
+                f"user_type={user_type.value!r} variant={variant.value!r} "
+                "exceeded TURN_LIMIT without a session_score."
             )
 
 
 def run_n_sessions(
-    scenario_id: str, user_type: UserType, n: int
+    scenario_id: str,
+    user_type: UserType,
+    n: int,
+    variant: StrategyVariant = StrategyVariant.DEFAULT,
 ) -> list[SimulatedSessionRecord]:
-    """Runs `n` simulated sessions and persists each one to
-    `simulated_sessions` (see eval/models.py). Owns its own DB session
-    (via app.db.SessionLocal) rather than taking one as a parameter, so
-    it's identically callable from the CLI (no request context) and from
-    POST /eval/simulate (see eval/router.py)."""
+    """Runs `n` simulated sessions — all against the same `variant` — and
+    persists each one to `simulated_sessions` (see eval/models.py). Owns
+    its own DB session (via app.db.SessionLocal) rather than taking one
+    as a parameter, so it's identically callable from the CLI (no
+    request context) and from POST /eval/simulate (see eval/router.py)."""
     if n < 1:
         raise ValueError("n must be at least 1")
 
@@ -87,13 +99,16 @@ def run_n_sessions(
     records: list[SimulatedSessionRecord] = []
     try:
         for i in range(n):
-            score, transcript = run_simulated_session(scenario_id, user_type)
-            record = save_simulated_session(db, scenario_id, user_type, score, transcript)
+            score, transcript = run_simulated_session(scenario_id, user_type, variant)
+            record = save_simulated_session(
+                db, scenario_id, user_type, variant, score, transcript
+            )
             records.append(record)
             logger.info(
-                "Simulated session %d/%d done: outcome=%s overall_score=%.1f",
+                "Simulated session %d/%d done: variant=%s outcome=%s overall_score=%.1f",
                 i + 1,
                 n,
+                variant.value,
                 score.outcome.value,
                 score.overall_score,
             )
@@ -140,11 +155,19 @@ def main() -> None:
     parser.add_argument(
         "--user-type", required=True, choices=[t.value for t in UserType]
     )
+    parser.add_argument(
+        "--variant",
+        default=StrategyVariant.DEFAULT.value,
+        choices=[v.value for v in StrategyVariant],
+        help="Which agent tactic-selection policy to run against (default: %(default)s)",
+    )
     parser.add_argument("--n", type=int, default=10)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    records = run_n_sessions(args.scenario_id, UserType(args.user_type), args.n)
+    records = run_n_sessions(
+        args.scenario_id, UserType(args.user_type), args.n, StrategyVariant(args.variant)
+    )
     _print_summary(records)
 
 

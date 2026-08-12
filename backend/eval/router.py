@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException
 
+from app.strategies.models import StrategyVariant
 from eval.run_simulation import run_n_sessions, summarize
 from eval.user_types import UserType
 
@@ -19,11 +20,16 @@ router = APIRouter(prefix="/eval", tags=["eval"])
 class SimulateRequest(BaseModel):
     scenario_id: str
     user_type: UserType
+    # Which agent tactic-selection policy to run against (see
+    # app/strategies/registry.py) — defaults to the same variant real
+    # /chat traffic uses, so omitting it reproduces today's behavior.
+    variant: StrategyVariant = StrategyVariant.DEFAULT
     n: int = 10
 
 
 class SimulatedSessionSummary(BaseModel):
     id: int
+    variant: str
     outcome: str
     overall_score: float
     final_outcome_value: float | None
@@ -40,7 +46,9 @@ def simulate(request: SimulateRequest) -> SimulateResponse:
         raise HTTPException(status_code=422, detail="n must be at least 1")
 
     try:
-        records = run_n_sessions(request.scenario_id, request.user_type, request.n)
+        records = run_n_sessions(
+            request.scenario_id, request.user_type, request.n, request.variant
+        )
     except ValueError as exc:
         # run_simulated_session raises ValueError for an unknown
         # scenario_id — same 404 semantics as /chat's persona lookup.
@@ -50,6 +58,7 @@ def simulate(request: SimulateRequest) -> SimulateResponse:
         sessions=[
             SimulatedSessionSummary(
                 id=r.id,
+                variant=r.variant,
                 outcome=r.outcome,
                 overall_score=r.overall_score,
                 final_outcome_value=r.final_outcome_value,

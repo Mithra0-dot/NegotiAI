@@ -6,9 +6,12 @@ not a shared table with an `is_simulated` flag — see the approved plan's
 page provably human-only, and CLAUDE.md is explicit that simulated
 results must never be conflated with real usage. Same column shape as
 SessionRecord (dedicated columns for what's queried/sorted, plus a JSON
-blob for the rest) with two additions: `user_type` (the simulated
-archetype) and `transcript` (the full simulated dialogue — see this
-module's read for why: a synthetic session with no visible dialogue is
+blob for the rest) with three additions: `user_type` (the simulated
+archetype), `variant` (which agent tactic-selection policy it ran
+against — see app/strategies/models.py's StrategyVariant, added in the
+strategy-variants pass so the next pass can group results for
+comparison without another schema change), and `transcript` (the full
+simulated dialogue — a synthetic session with no visible dialogue is
 hard to sanity-check later).
 
 Uses the generic `JSON` type, same test-portability reasoning as
@@ -31,6 +34,9 @@ class SimulatedSessionRecord(Base):
     # eval.user_types.UserType's value (e.g. "aggressive") — plain str
     # column, same convention as `outcome` below (enum stored by value).
     user_type: Mapped[str] = mapped_column(index=True)
+    # app.strategies.models.StrategyVariant's value (e.g. "default",
+    # "hardline") — same enum-by-value convention as user_type/outcome.
+    variant: Mapped[str] = mapped_column(index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
