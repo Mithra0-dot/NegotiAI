@@ -44,13 +44,15 @@ def list_simulated_sessions(
     scenario_id: str | None = None,
     user_type: UserType | None = None,
     variant: StrategyVariant | None = None,
-    limit: int = 100,
+    limit: int | None = 100,
 ) -> list[SimulatedSessionRecord]:
-    query = (
-        select(SimulatedSessionRecord)
-        .order_by(SimulatedSessionRecord.created_at.desc())
-        .limit(limit)
-    )
+    """`limit=None` returns every matching row, unbounded — needed by
+    eval/compare_variants.py, where silently dropping rows past the
+    default 100 would quietly bias a statistical comparison toward the
+    most recent sessions rather than the full sample."""
+    query = select(SimulatedSessionRecord).order_by(SimulatedSessionRecord.created_at.desc())
+    if limit is not None:
+        query = query.limit(limit)
     if scenario_id is not None:
         query = query.where(SimulatedSessionRecord.scenario_id == scenario_id)
     if user_type is not None:

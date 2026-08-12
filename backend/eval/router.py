@@ -11,7 +11,9 @@ from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 
 from app.strategies.models import StrategyVariant
+from eval.compare_variants import UnknownScenarioError, compare_variants
 from eval.run_simulation import run_n_sessions, summarize
+from eval.statistics import ComparisonResult
 from eval.user_types import UserType
 
 router = APIRouter(prefix="/eval", tags=["eval"])
@@ -67,3 +69,19 @@ def simulate(request: SimulateRequest) -> SimulateResponse:
         ],
         summary=summarize(records),
     )
+
+
+@router.get("/compare")
+def compare(scenario_id: str, user_type: UserType | None = None) -> ComparisonResult:
+    """Read-only — GET, not POST, unlike /simulate: this only computes
+    over sessions that already exist, it never generates new ones."""
+    try:
+        return compare_variants(scenario_id, user_type)
+    except UnknownScenarioError as exc:
+        # Same 404 semantics as /chat and /simulate.
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        # InsufficientSessionsError (eval.compare_variants) or the
+        # defense-in-depth check inside eval.statistics.compare_two_samples
+        # — either way, a well-formed request that can't be satisfied yet.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
