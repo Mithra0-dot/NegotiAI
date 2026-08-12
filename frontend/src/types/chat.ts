@@ -84,6 +84,16 @@ export interface ChatResponse {
   session_score: SessionScore | null;
 }
 
+/** Mirrors backend/app/history/schemas.py's SessionHistoryItem — one row
+ * from GET /sessions. */
+export interface SessionHistoryItem {
+  id: number;
+  scenario_id: string;
+  /** ISO 8601 timestamp string, as serialized by Pydantic's datetime. */
+  created_at: string;
+  score: SessionScore;
+}
+
 /** One bubble in the chat transcript. Not persisted anywhere yet — lives
  * only in ChatPage's React state and is lost on refresh (no DB in this pass). */
 export interface ChatMessage {

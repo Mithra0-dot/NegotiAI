@@ -1,4 +1,9 @@
-import type { ChatRequest, ChatResponse, ChatTurn } from "../types/chat";
+import type {
+  ChatRequest,
+  ChatResponse,
+  ChatTurn,
+  SessionHistoryItem,
+} from "../types/chat";
 
 // Defaults to local dev backend; set VITE_API_BASE_URL to point at a
 // deployed (Render) backend later without touching this code.
@@ -34,6 +39,25 @@ export async function sendChatMessage(
       .catch(() => undefined);
     throw new Error(
       detail ?? `Chat request failed: ${res.status} ${res.statusText}`,
+    );
+  }
+
+  return res.json();
+}
+
+export async function fetchSessionHistory(
+  scenarioId?: string,
+): Promise<SessionHistoryItem[]> {
+  const url = new URL(`${API_BASE_URL}/sessions`);
+  if (scenarioId) {
+    url.searchParams.set("scenario_id", scenarioId);
+  }
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to load session history: ${res.status} ${res.statusText}`,
     );
   }
 

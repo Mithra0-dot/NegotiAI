@@ -8,33 +8,10 @@ import {
   YAxis,
 } from "recharts";
 import { OutcomeRangeBar } from "./OutcomeRangeBar";
-import type { SessionOutcome, SessionScore } from "../types/chat";
+import { OUTCOME_LABELS, statusColor, statusTextClass } from "../lib/scoreDisplay";
+import type { SessionScore } from "../types/chat";
 
-// Status colors, not categorical — each bar is a "how well did you do"
-// quality signal, not a distinct series to tell apart from its neighbors
-// (see the dataviz skill: "when a series means good/bad it wears status
-// tokens"). Reusing the exact same three tokens DifficultyBadge already
-// uses for Easy/Medium/Hard, so the scorecard reads as the same design
-// system rather than introducing a new palette.
 const ROW_LABEL_WIDTH = 160; // px — kept in sync with the manual BATNA row below
-
-function statusColor(score: number): string {
-  if (score >= 70) return "#10b981"; // emerald-500
-  if (score >= 40) return "#f59e0b"; // amber-500
-  return "#f43f5e"; // rose-500
-}
-
-function statusTextClass(score: number): string {
-  if (score >= 70) return "text-emerald-400";
-  if (score >= 40) return "text-amber-400";
-  return "text-rose-400";
-}
-
-const OUTCOME_LABELS: Record<SessionOutcome, string> = {
-  deal_reached: "Deal reached",
-  walked_away: "Walked away",
-  turn_limit_reached: "Turn limit reached",
-};
 
 interface ScorecardProps {
   score: SessionScore;
