@@ -3,7 +3,14 @@
 Uses the real salary-negotiation persona as a stand-in, same as
 test_strategy.py — these tests only care about mock-reply mechanics, not
 persona content.
+
+Reply text is no longer a finite enumerable set (templates now embed a
+randomized {value} — see app/mock_numbers.py), so pool-membership checks
+are structural (regex against the template shape) rather than exact-
+string-set membership.
 """
+
+import re
 
 import app.agent.llm as llm_module
 from app.agent.llm import generate_reply
@@ -16,33 +23,65 @@ PERSONA = get_persona("salary-negotiation")
 assert PERSONA is not None
 
 _MOCK_PREFIX = "[mock] "
+_NUMBER_TACTICS = (Tactic.ANCHORING, Tactic.DEADLINE_PRESSURE, Tactic.GOOD_COP_BAD_COP)
 
 
-def _expected_variants(tactic: Tactic) -> set[str]:
-    """Every fully-rendered string generate_mock_reply could produce for
-    this tactic and persona, given the known template/trait pools."""
-    return {
-        template.format(trait=trait)
-        for template in REPLY_POOLS[tactic]
-        for trait in PERSONA.personality_traits
-    }
+def _tactic_regexes(tactic: Tactic) -> list[re.Pattern[str]]:
+    """Converts each of `tactic`'s templates into a regex — {trait} and
+    {value} become wildcards, {unit} is pinned to this persona's actual
+    unit string — so a rendered reply can be checked against "did this
+    come from tactic's pool" without enumerating every possible value."""
+    patterns = []
+    for template in REPLY_POOLS[tactic]:
+        escaped = re.escape(template)
+        escaped = escaped.replace(re.escape("{trait}"), r".+")
+        escaped = escaped.replace(re.escape("{value}"), r"[\d.]+")
+        escaped = escaped.replace(re.escape("{unit}"), re.escape(PERSONA.constraints.unit))
+        patterns.append(re.compile(f"^{escaped}$"))
+    return patterns
 
 
 def test_mock_reply_has_prefix_and_is_nonempty():
-    reply = generate_mock_reply(PERSONA, Tactic.ANCHORING)
+    reply = generate_mock_reply(PERSONA, Tactic.ANCHORING, turn_number=1)
     assert reply.startswith(_MOCK_PREFIX)
     assert reply.strip() != _MOCK_PREFIX.strip()
 
 
-def test_mock_reply_stays_within_its_tactic_pool():
+def test_mock_reply_matches_one_of_its_tactic_templates():
     for tactic in Tactic:
-        expected = _expected_variants(tactic)
-        # Run several times — the pool + trait choice is random, so a
-        # single draw wouldn't exercise the variety at all.
-        for _ in range(20):
-            reply = generate_mock_reply(PERSONA, tactic)
-            body = reply.removeprefix(_MOCK_PREFIX)
-            assert body in expected, f"{body!r} not in {tactic} pool"
+        regexes = _tactic_regexes(tactic)
+        # Several turn numbers and draws — the template + trait + value
+        # choice is all random, so one draw wouldn't exercise the variety.
+        for turn_number in (1, 4, 9):
+            for _ in range(10):
+                reply = generate_mock_reply(PERSONA, tactic, turn_number)
+                body = reply.removeprefix(_MOCK_PREFIX)
+                assert any(p.match(body) for p in regexes), f"{body!r} not in {tactic} pool"
+
+
+def test_silence_never_cites_a_number():
+    # SILENCE deliberately never gets a {value} — its whole point is
+    # withholding a position, not revealing one (see app/agent/mock.py).
+    for _ in range(15):
+        reply = generate_mock_reply(PERSONA, Tactic.SILENCE, turn_number=5)
+        assert not re.search(r"\d", reply)
+
+
+def test_every_other_tactic_cites_a_number_by_mid_negotiation():
+    for tactic in _NUMBER_TACTICS:
+        for _ in range(15):
+            reply = generate_mock_reply(PERSONA, tactic, turn_number=5)
+            assert re.search(r"\d", reply), f"{tactic} reply had no number: {reply!r}"
+
+
+def test_value_starts_at_exact_target_on_turn_one():
+    # progress=0 at turn 1 (see app/mock_numbers.py's concession_value)
+    # regardless of tactic's concession range — no movement yet.
+    target_str = str(round(PERSONA.constraints.target))
+    for tactic in _NUMBER_TACTICS:
+        for _ in range(10):
+            reply = generate_mock_reply(PERSONA, tactic, turn_number=1)
+            assert target_str in reply, f"{tactic} turn-1 reply didn't cite the exact target: {reply!r}"
 
 
 def test_different_tactics_have_disjoint_pools():
@@ -71,6 +110,7 @@ def test_generate_reply_takes_mock_branch_without_calling_the_llm(monkeypatch):
         detected_signals=[],
         message="Let's talk numbers.",
         history=[],
+        turn_number=1,
     )
     assert reply.startswith(_MOCK_PREFIX)
 
@@ -98,6 +138,7 @@ def test_generate_reply_real_path_is_untouched_when_mock_disabled(monkeypatch):
             detected_signals=[],
             message="Let's talk numbers.",
             history=[],
+            turn_number=1,
         )
     except AgentError:
         pass

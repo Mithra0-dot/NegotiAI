@@ -71,6 +71,7 @@ def run_chat_turn(
         detected_signals=detected_signals,
         message=message,
         history=history,
+        turn_number=turn_number,
     )
 
     # Session-end detection only looks at this exchange (stateless — an

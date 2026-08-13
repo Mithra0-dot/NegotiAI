@@ -69,3 +69,17 @@ CLOSING_TENDENCY: dict[UserType, ClosingTendency] = {
     # Middle ground on both timing and outcome.
     UserType.DATA_DRIVEN: ClosingTendency(close_eagerness=1.0, accept_bias=0.65, walk_away_bias=0.35),
 }
+
+# How far toward their own walk-away point this archetype is plausibly
+# willing to move by the end of a negotiation — fed into
+# app.mock_numbers.concession_value() by eval/mock_user.py, same
+# min/max-fraction shape as app/agent/mock.py's TACTIC_CONCESSION_RANGE.
+# Independent of which strategy variant the agent is running — a
+# simulated user's own concessiveness doesn't change based on who it's
+# up against, only the *agent's* side of the negotiation does that (see
+# TACTIC_CONCESSION_RANGE).
+CONCESSION_RANGE: dict[UserType, tuple[float, float]] = {
+    UserType.AGGRESSIVE: (0.00, 0.10),
+    UserType.PASSIVE: (0.25, 0.50),
+    UserType.DATA_DRIVEN: (0.10, 0.30),
+}

@@ -66,15 +66,20 @@ def generate_reply(
     detected_signals: list[DetectedSignal],
     message: str,
     history: list[ChatTurn],
+    turn_number: int,
 ) -> str:
     """Builds the system prompt + conversation history, calls Claude, and
     returns the reply text. Raises AgentError on any failure — callers
     turn that into an HTTP error rather than falling back to stub text,
-    so a real failure is never mistaken for a real (if bland) reply."""
+    so a real failure is never mistaken for a real (if bland) reply.
+
+    `turn_number` is only used by the mock branch (see app/agent/mock.py's
+    concession_value() call) — the real branch's prompt already captures
+    negotiation progress via `phase`, so it's unused there."""
     if settings.mock_llm:
         # Dev/demo mode — no API call, no credits spent. See
         # app/agent/mock.py; real path below is otherwise untouched.
-        return generate_mock_reply(persona, tactic)
+        return generate_mock_reply(persona, tactic, turn_number)
 
     system_prompt = build_system_prompt(persona, phase, tactic, detected_signals)
     conversation = [

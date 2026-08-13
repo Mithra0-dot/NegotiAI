@@ -12,28 +12,42 @@ on the turn it decides to close, or every simulated session would run to
 TURN_LIMIT_REACHED regardless of user type. See eval/user_types.py's
 ClosingTendency for the per-type timing/outcome weights driving the
 random choice below.
+
+Templates now cite a number via app.mock_numbers' concession_value() —
+bounded, randomized movement from the user's own target toward their
+walk-away point (see eval/user_types.py's CONCESSION_RANGE and
+app/mock_numbers.py's module docstring for the full "mock/demo data, not
+real negotiation intelligence" scope note). PASSIVE and DATA_DRIVEN also
+get some templates phrased as an active concession ("I could come down
+to...") rather than just stating a number — deliberately, so those
+turns actually trip app/classifier's UNFORCED_CONCESSION signal and
+concession_pacing_score stops being permanently stuck at 100 in mock
+mode. AGGRESSIVE stays purely declarative regardless of how much its own
+number drifts, matching its "resists conceding" personality.
 """
 
 import random
 
+from app.mock_numbers import concession_value
 from app.personas.models import PersonaInternal
-from eval.user_types import CLOSING_TENDENCY, UserType
+from app.scoring.outcome_detection import TURN_LIMIT
+from eval.user_types import CLOSING_TENDENCY, CONCESSION_RANGE, UserType
 
 REPLY_POOLS: dict[UserType, list[str]] = {
     UserType.AGGRESSIVE: [
-        "I'm not moving off {target} {unit} — that's where I need to land.",
-        "Let's be real, {target} {unit} is the number. I've got other options if this doesn't work.",
-        "I've done my homework — {target} {unit} isn't up for debate on my end.",
+        "I'm not moving off {value} {unit} — that's where I need to land.",
+        "Let's be real, {value} {unit} is the number. I've got other options if this doesn't work.",
+        "I've done my homework — {value} {unit} isn't up for debate on my end.",
     ],
     UserType.PASSIVE: [
-        "I was hoping for something around {target} {unit}, but I don't want to make this difficult.",
-        "Maybe {target} {unit} could work? I'm flexible if that's a stretch for you.",
-        "I don't want to push too hard, but {target} {unit} would be great if possible.",
+        "I was hoping for something around {value} {unit}, but I don't want to make this difficult.",
+        "I could come down to {value} {unit} if that helps us close this out.",
+        "I don't mind meeting you at {value} {unit} — I just want this resolved.",
     ],
     UserType.DATA_DRIVEN: [
-        "Based on what I've seen elsewhere, {target} {unit} is the market rate — happy to share the comps.",
-        "The numbers I've gathered point to {target} {unit} as fair. What's driving your figure?",
-        "Looking at comparable deals, {target} {unit} seems reasonable — let's talk specifics.",
+        "Based on what I've seen elsewhere, {value} {unit} is the market rate — happy to share the comps.",
+        "The numbers I've gathered point to {value} {unit} as fair. What's driving your figure?",
+        "I could accept {value} {unit} if you can justify your position with similar data.",
     ],
 }
 
@@ -78,17 +92,17 @@ def generate_mock_user_message(
     persona: PersonaInternal, user_type: UserType, turn_number: int
 ) -> str:
     """Picks a closing line if this turn rolls one, otherwise a random
-    templated line from `user_type`'s pool grounded in the scenario's
-    own user_constraints (so the message carries a real numeric anchor,
-    same as a human message would), prefixed `[mock]` per the existing
+    templated line from `user_type`'s pool, grounded in a bounded,
+    randomized number derived from the scenario's own user_constraints
+    (see module docstring) — prefixed `[mock]` per the existing
     convention (see app/agent/mock.py)."""
     closing = _maybe_closing_line(user_type, turn_number)
     if closing is not None:
         return f"[mock] {closing}"
 
     template = random.choice(REPLY_POOLS[user_type])
-    text = template.format(
-        target=persona.user_constraints.target,
-        unit=persona.user_constraints.unit,
+    value = concession_value(
+        persona.user_constraints, turn_number, CONCESSION_RANGE[user_type], TURN_LIMIT
     )
+    text = template.format(value=value, unit=persona.user_constraints.unit)
     return f"[mock] {text}"
