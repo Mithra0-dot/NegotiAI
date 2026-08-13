@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: negotiai
+      POSTGRES_PASSWORD: negotiai
+      POSTGRES_DB: negotiai
+    ports:
+      - "5432:5432"
+    volumes:
+      - negotiai_pg_data:/var/lib/postgresql/data
+
+volumes:
+  negotiai_pg_data:

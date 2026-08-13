@@ -1,0 +1,37 @@
+name: Eval Gate
+
+# Golden/fixed negotiation conversations, run through the real scoring
+# pipeline (backend/tests/eval/test_golden_conversations.py) — per
+# CLAUDE.md: "eval suite runs on every prompt/strategy change, blocks
+# merge on scoring-consistency regression." Deliberately scoped to just
+# this one test file, not the full suite — see that file's docstring for
+# why it's fully deterministic and needs neither a database nor an
+# Anthropic API key.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  golden-conversations:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # No real LLM calls in this job — see the test file's docstring.
+      MOCK_LLM: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run golden conversation eval gate
+        run: pytest tests/eval/test_golden_conversations.py -v
