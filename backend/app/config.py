@@ -10,6 +10,7 @@ surfaces as a clear error on the first real /chat call instead (see
 app/agent/llm.py).
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +31,29 @@ class Settings(BaseSettings):
     # Render's Postgres URL in production). Must be Postgres, not SQLite
     # — see app/db.py's docstring.
     database_url: str = "postgresql+psycopg://negotiai:negotiai@localhost:5432/negotiai"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_postgres_scheme(cls, value: str) -> str:
+        """Render (and Heroku-style platforms) hand out connection strings
+        prefixed `postgres://`. SQLAlchemy 1.4+/2.0 dropped that dialect
+        name and rejects it outright (`NoSuchModuleError`) — confirmed
+        directly against this project's installed SQLAlchemy version, not
+        assumed. Rewritten to `postgresql+psycopg://`, not just
+        `postgresql://`: a bare `postgresql://` URL resolves to
+        SQLAlchemy's default driver, psycopg2 — which isn't installed
+        here (requirements.txt has `psycopg[binary]`, i.e. psycopg3) and
+        would fail with `ModuleNotFoundError` instead, just a different
+        error at the same spot. Also normalizes an already-bare
+        `postgresql://` for the same reason, in case one shows up without
+        the `postgres://` prefix. A URL that already names a driver
+        (`postgresql+psycopg://`, the default above) passes through
+        untouched."""
+        if value.startswith("postgres://"):
+            return "postgresql+psycopg://" + value.removeprefix("postgres://")
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg://" + value.removeprefix("postgresql://")
+        return value
 
 
 settings = Settings()
