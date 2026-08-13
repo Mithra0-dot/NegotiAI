@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.classifier.models import DetectedSignal
 from app.personas.models import PersonaPublic
 from app.scoring.models import SessionScore
-from app.strategies.models import Phase, Tactic
+from app.strategies.models import Phase, StrategyVariant, Tactic
 
 
 class ChatTurn(BaseModel):
@@ -37,6 +37,11 @@ class ChatRequest(BaseModel):
     # the LLM as conversation history so it doesn't contradict its own
     # earlier statements (its anchor number, prior concessions, etc).
     history: list[ChatTurn] = []
+    # Which opponent difficulty/style preset to negotiate against — see
+    # app/strategies/registry.py. Defaults to DEFAULT ("Standard" in the
+    # UI) so this field is additive/backward-compatible with any caller
+    # that doesn't send it.
+    variant: StrategyVariant = StrategyVariant.DEFAULT
 
 
 class ChatResponse(BaseModel):

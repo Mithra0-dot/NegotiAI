@@ -66,7 +66,11 @@ def chat(request: ChatRequest, db: DBSession = Depends(get_db)) -> ChatResponse:
 
     try:
         result = run_chat_turn(
-            persona, request.message, request.turn_number, request.history
+            persona,
+            request.message,
+            request.turn_number,
+            request.history,
+            variant=request.variant,
         )
     except AgentError as exc:
         # Surface as a clear failure, never a silent fallback to stub

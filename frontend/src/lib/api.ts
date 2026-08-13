@@ -3,6 +3,7 @@ import type {
   ChatResponse,
   ChatTurn,
   SessionHistoryItem,
+  StrategyVariant,
 } from "../types/chat";
 
 // Defaults to local dev backend; set VITE_API_BASE_URL to point at a
@@ -15,12 +16,14 @@ export async function sendChatMessage(
   message: string,
   turnNumber: number,
   history: ChatTurn[],
+  variant: StrategyVariant,
 ): Promise<ChatResponse> {
   const body: ChatRequest = {
     scenario_id: scenarioId,
     message,
     turn_number: turnNumber,
     history,
+    variant,
   };
 
   const res = await fetch(`${API_BASE_URL}/chat`, {

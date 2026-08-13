@@ -10,6 +10,12 @@ export type Tactic =
   | "deadline_pressure"
   | "good_cop_bad_cop";
 
+/** Mirrors backend/app/strategies/models.py's StrategyVariant enum — the
+ * opponent difficulty/style preset. Presented to the user as "Standard" /
+ * "Tough Negotiator" (see data/opponentPresets.ts), never these raw
+ * values. */
+export type StrategyVariant = "default" | "hardline";
+
 /** Mirrors backend/app/classifier/models.py's SignalType enum. */
 export type SignalType =
   | "unforced_concession"
@@ -39,6 +45,9 @@ export interface ChatRequest {
    * the LLM has conversation continuity. See ChatRequest.history's
    * docstring in schemas.py. */
   history: ChatTurn[];
+  /** Which opponent preset to negotiate against. See ChatRequest.variant's
+   * docstring in schemas.py. */
+  variant: StrategyVariant;
 }
 
 /** Mirrors backend/app/scoring/models.py's SessionOutcome enum. */
