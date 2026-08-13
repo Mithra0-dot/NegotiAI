@@ -5,6 +5,8 @@
 ![Scenario picker landing screen](screenshots/scenario-picker.png)
 *The landing screen — four negotiation scenarios, each with its own persona, difficulty, and opponent style hint.*
 
+**Try it live: [negotiai-1.onrender.com](https://negotiai-1.onrender.com)**
+
 ## Why this exists
 
 Negotiation is a skill people rarely get to rehearse before it matters — a salary offer, a lease renewal, a cofounder split. NegotiAI is a practice ground: pick a scenario, negotiate against a persona-driven AI opponent that tracks the conversation and adapts its tactics, and walk away with a structured scorecard instead of a vague feeling about how it went.
