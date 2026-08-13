@@ -38,12 +38,15 @@ async def lifespan(app: FastAPI) -> Iterator[None]:
 app = FastAPI(title="NegotiAI API", lifespan=lifespan)
 
 # The Vite dev server runs on 5173 by default; both localhost and 127.0.0.1
-# forms are allowed since browsers treat them as distinct origins.
+# forms are allowed since browsers treat them as distinct origins. The
+# onrender.com origin is the deployed frontend (static site) calling this
+# backend in production.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://negotiai-1.onrender.com",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
