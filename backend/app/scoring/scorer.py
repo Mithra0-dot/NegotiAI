@@ -72,7 +72,7 @@ def _concession_pacing(user_turns: list[str]) -> tuple[float, float]:
         )
     )
     ratio = concession_count / len(user_turns)
-    return ratio, (1 - ratio) * 100
+    return ratio, ratio * 100
 
 
 def _batna_discipline_score(
